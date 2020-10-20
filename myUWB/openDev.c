@@ -1,10 +1,3 @@
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <fcntl.h>
-#include <termios.h>
-#include <stdio.h>
-#include <unistd.h>
-#include <string.h>
 #include "openDev.h"
 
 
@@ -136,4 +129,15 @@ int uart_deinit(int dev)
     printf("Close uart..\n");
     close(dev);
     return 0;
+}
+
+//打印
+void print_hex(unsigned char* chr,int num)
+{
+    for(int i =0;i<num;i++)
+    {
+        printf("%02x ",*chr);
+        chr++;
+    }
+    printf("\n");
 }

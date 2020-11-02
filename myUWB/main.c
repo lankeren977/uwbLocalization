@@ -6,10 +6,7 @@
 #include "openDev.h"
 #include "nlink_linktrack_tagframe0.h"
 #include "nlink_utils.h"
-
-
-
-
+float past_theta = 0;
 
 int main()
 {
@@ -39,8 +36,10 @@ int main()
             //print_hex(buffer,128);
             if (g_nlt_tagframe0.UnpackData(buffer, sizeof(buffer)))
             {
-                nlt_tagframe0_result_t *result = &g_nlt_tagframe0.result; 
-                printf("id:%d, system_time:%d, x:%f, y:%f, theta:%f\r\n", result->id, result->system_time, result->pos_3d[0], result->pos_3d[1], result->angle_3d[2]);
+                nlt_tagframe0_result_t *result = &g_nlt_tagframe0.result;
+                double d_theta = result->angle_3d[2] - past_theta;
+                past_theta = result->angle_3d[2];
+                printf("id:%d, x:%f, y:%f, theta:%f, d_theta:%f\r\n", result->id, result->pos_3d[0], result->pos_3d[1], result->angle_3d[2], d_theta);
             }
         }
         

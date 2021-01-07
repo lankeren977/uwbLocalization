@@ -20,26 +20,35 @@ vec2d trilateration(const vec2d *anchorArray, const int *radius, const int count
     circle3.y = anchorArray[2].y;
     circle3.r = radius[2];
 
-    vec2d *insect1, *insect2, *insect3;
-
     if (count == 3) //一次三角质心
     {
-        insect(insect1, circle1, circle2);
-        insect(insect2, circle1, circle3);
-        insect(insect3, circle2, circle3);
+        vector<vec2d> insect1 = insect(circle1, circle2);
+        vector<vec2d> insect2 = insect(circle1, circle3);
+        vector<vec2d> insect3 = insect(circle2, circle3);
 
-        if (insect1 != NULL && insect2 != NULL && insect3 != NULL)
+        vector<vec2d> alter_points;
+        int valid_insect = 0;
+        if (!insect1.empty())
         {
-            vec2d *alter_points = new vec2d[3];
-            alter_points[0] = selectPoint(insect1, circle3);
-            alter_points[1] = selectPoint(insect2, circle3);
-            alter_points[2] = selectPoint(insect3, circle1);
-
-            result = optimizeByCentroid(alter_points);
-            last_result = result;
-            return result;
+            alter_points.push_back(selectPoint(insect1, circle3));
+            valid_insect++;
         }
-        return last_result;
+        if (!insect2.empty())
+        {
+            alter_points.push_back(selectPoint(insect2, circle2));
+        }
+        if (!insect3.empty())
+        {
+            alter_points.push_back(selectPoint(insect3, circle1));
+        }
+
+        if (alter_points.empty())
+        {
+            return last_result;
+        }
+        result = optimizeByRatio(alter_points);
+        last_result = result;
+        return result;
     }
     // else if (count == 4) //两次三角质心
     // {
@@ -56,7 +65,7 @@ vec2d trilateration(const vec2d *anchorArray, const int *radius, const int count
 }
 
 //确定备选三角顶点
-vec2d selectPoint(const vec2d *points, const circle circle)
+vec2d selectPoint(const vector<vec2d> points, const circle circle)
 {
     vec2d alter_point;
     if (!isOutsideCircle(points[0], circle))
@@ -84,9 +93,9 @@ bool isOutsideCircle(const vec2d point, const circle circle)
 }
 
 //两圆求交点
-void insect(vec2d* &insect, const circle circle1, const circle circle2)
+vector<vec2d> insect(const circle circle1, const circle circle2)
 {
-    vec2d *result = new vec2d[2];
+    vector<vec2d> results;
     double dis, a, b, c, p, q, r;
     double cos_value[2], sin_value[2];
 
@@ -95,15 +104,16 @@ void insect(vec2d* &insect, const circle circle1, const circle circle2)
     if (dis < fabs(circle1.r - circle2.r) || dis > circle1.r + circle2.r)
     {
         cout << "两圆没有交点" << endl;
-        return;
+        return results;
     }
     //一个内交点为异常
     if (dis == fabs(circle1.r - circle2.r))
     {
         cout << "两圆有一个内交点" << endl;
-        return;
+        return results;
     }
 
+    vec2d result1, result2;
     //初始化参数
     a = 2 * circle1.r * (circle1.x - circle2.x);
     b = 2 * circle1.r * (circle1.y - circle2.y);
@@ -118,15 +128,17 @@ void insect(vec2d* &insect, const circle circle1, const circle circle2)
         cos_value[0] = -q / p / 2;
         sin_value[0] = sqrt(1 - pow(cos_value[0], 2));
 
-        result[0].x = circle1.x + circle1.r * cos_value[0];
-        result[0].y = circle1.y + circle1.r * sin_value[0];
+        result1.x = circle1.x + circle1.r * cos_value[0];
+        result1.y = circle1.y + circle1.r * sin_value[0];
         //验证sin正负
-        if (pow(result[0].x - circle2.x, 2) + pow(result[0].y - circle2.y, 2) - pow(circle2.r, 2) > ZERO)
+        if (pow(result1.x - circle2.x, 2) + pow(result1.y - circle2.y, 2) - pow(circle2.r, 2) > ZERO)
         {
-            result[0].y = circle1.y - circle1.r * sin_value[0];
+            result1.y = circle1.y - circle1.r * sin_value[0];
         }
-        result[1] = result[0];
-        insect = result;
+        result2 = result1;
+        results.push_back(result1);
+        results.push_back(result2);
+        return results;
     }
 
     //如果有两个交点
@@ -135,39 +147,76 @@ void insect(vec2d* &insect, const circle circle1, const circle circle2)
     sin_value[0] = sqrt(1 - pow(cos_value[0], 2));
     sin_value[1] = sqrt(1 - pow(cos_value[1], 2));
 
-    result[0].x = circle1.x + circle1.r * cos_value[0];
-    result[1].x = circle1.x + circle1.r * cos_value[1];
-    result[0].y = circle1.y + circle1.r * sin_value[0];
-    result[1].y = circle1.y + circle1.r * sin_value[1];
+    result1.x = circle1.x + circle1.r * cos_value[0];
+    result2.x = circle1.x + circle1.r * cos_value[1];
+    result1.y = circle1.y + circle1.r * sin_value[0];
+    result2.y = circle1.y + circle1.r * sin_value[1];
     //验证解
-    if (pow(result[0].x - circle2.x, 2) + pow(result[0].y - circle2.y, 2) - pow(circle2.r, 2) > ZERO)
+    if (pow(result1.x - circle2.x, 2) + pow(result1.y - circle2.y, 2) - pow(circle2.r, 2) > ZERO)
     {
-        result[0].y = circle1.y - circle1.r * sin_value[0];
+        result1.y = circle1.y - circle1.r * sin_value[0];
     }
-    if (pow(result[1].x - circle2.x, 2) + pow(result[1].y - circle2.y, 2) - pow(circle2.r, 2) > ZERO)
+    if (pow(result2.x - circle2.x, 2) + pow(result2.y - circle2.y, 2) - pow(circle2.r, 2) > ZERO)
     {
-        result[1].y = circle1.y - circle1.r * sin_value[1];
+        result2.y = circle1.y - circle1.r * sin_value[1];
     }
     //一种特殊情况当已经确定有两个不同的交点，但解出来的cos值只有一个，则sin值必定一正一负
-    if (fabs(result[0].x - result[1].x) < ZERO && fabs(result[0].y - result[1].y) < ZERO)
+    if (fabs(result1.x - result2.x) < ZERO && fabs(result1.y - result2.y) < ZERO)
     {
-        if (result[0].y > 0)
+        if (result1.y > 0)
         {
-            result[1].y = -result[1].y;
+            result2.y = -result2.y;
         }
         else
         {
-            result[0].y = -result[0].y;
+            result1.y = -result1.y;
         }
     }
-    insect = result;
+    results.push_back(result1);
+    results.push_back(result2);
+    return results;
 }
 
-//三角质心优化
-vec2d optimizeByCentroid(const vec2d *points)
+//三角质心优化---改为误差加权平均优化
+vec2d optimizeByRatio(const vector<vec2d> points)
 {
     vec2d result;
-    result.x = (points[0].x + points[1].x + points[2].x) / 3;
-    result.y = (points[0].y + points[1].y + points[2].y) / 3;
+    double avg_x, avg_y, sum_e_x, sum_e_y, sum_r_x, sum_r_y;
+    avg_x = avg_y = sum_e_x = sum_e_y = sum_r_x = sum_r_y = 0;
+    for (int i = 0; i < points.size(); i++)
+    {
+        avg_x += points[i].x;
+        avg_y += points[i].y;
+    }
+    avg_x /= points.size();
+    avg_y /= points.size();
+
+    //计算与平均值的差值
+    double error_x[points.size()] = {0};
+    double error_y[points.size()] = {0};
+    double ratio_x[points.size()] = {0};
+    double ratio_y[points.size()] = {0};
+    for (int i = 0; i < points.size(); i++)
+    {
+        error_x[i] = fabs(points[i].x - avg_x);
+        error_y[i] = fabs(points[i].y - avg_y);
+        sum_e_x += error_x[i];
+        sum_e_y += error_y[i];
+    }
+
+    for (int i = 0; i < points.size(); i++)
+    {
+        ratio_x[i] = sum_e_x / error_x[i];
+        ratio_y[i] = sum_e_y / error_y[i];
+        sum_r_x += ratio_x[i];
+        sum_r_y += ratio_y[i];
+    }
+
+    for (int i = 0; i < points.size(); i++)
+    {
+        result.x += points[i].x * ratio_x[i] / sum_r_x;
+        result.y += points[i].y * ratio_y[i] / sum_r_y;
+    }
+
     return result;
 }

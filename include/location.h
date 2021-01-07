@@ -3,6 +3,7 @@
 
 #include <iostream>
 #include <math.h>
+#include <vector>
 using namespace std;
 
 static const double ZERO = 1e-9;
@@ -23,9 +24,9 @@ struct circle
 };
 
 vec2d trilateration(const vec2d *anchorArray, const int *radius, const int count);
-vec2d selectPoint(const vec2d* points,const circle circle);
+vec2d selectPoint(const vector<vec2d> points,const circle circle);
 bool isOutsideCircle(const vec2d point, const circle circle);
-void insect(vec2d* &insect, const circle circle1, const circle circle2);
-vec2d optimizeByCentroid(const vec2d *points);
+vector<vec2d> insect(const circle circle1, const circle circle2);
+vec2d optimizeByRatio(const vector<vec2d> points);
 
 #endif

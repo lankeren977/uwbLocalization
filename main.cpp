@@ -8,7 +8,7 @@
 
 #define ANCHOR_NUM 3
 #define ANCHOR_DIS_START 6
-vec2d anchorArray[ANCHOR_NUM] = {{0, 0},  {100, 50}, {176, 0}};
+vec2d anchorArray[ANCHOR_NUM] = {{0, 0}, {100, 0}, {57, 53}};
 
 int main()
 {

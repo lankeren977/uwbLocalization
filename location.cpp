@@ -1,11 +1,11 @@
 #include "location.h"
 
-vec2d last_result;
+vector<vec2d> last_result;
 
 //多球交汇原理
-vec2d trilateration(const vec2d *anchorArray, const int *radius, const int count)
+vector<vec2d> trilateration(const vec2d *anchorArray, const int *radius, const int count)
 {
-    vec2d result;
+    vector<vec2d> result;
     //初始化圆
     circle circle1, circle2, circle3;
     circle1.x = anchorArray[0].x;
@@ -178,9 +178,11 @@ vector<vec2d> insect(const circle circle1, const circle circle2)
 }
 
 //三角质心优化---改为误差加权平均优化
-vec2d optimizeByRatio(const vector<vec2d> points)
+vector<vec2d> optimizeByRatio(const vector<vec2d> points)
 {
+    vector<vec2d> data;
     vec2d result;
+    vec2d old_result;
     double avg_x, avg_y, sum_e_x, sum_e_y, sum_r_x, sum_r_y;
     avg_x = avg_y = sum_e_x = sum_e_y = sum_r_x = sum_r_y = 0;
     for (int i = 0; i < points.size(); i++)
@@ -190,6 +192,10 @@ vec2d optimizeByRatio(const vector<vec2d> points)
     }
     avg_x /= points.size();
     avg_y /= points.size();
+
+    old_result.x = avg_x;
+    old_result.y = avg_y;
+    data.push_back(old_result);
 
     //计算与平均值的差值
     double error_x[points.size()] = {0};
@@ -218,5 +224,6 @@ vec2d optimizeByRatio(const vector<vec2d> points)
         result.y += points[i].y * ratio_y[i] / sum_r_y;
     }
 
-    return result;
+    data.push_back(result);
+    return data;
 }

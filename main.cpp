@@ -3,17 +3,18 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <termios.h>
+#include <thread>
+#include <iomanip>
 #include "openDev.h"
 #include "location.h"
 
 #define ANCHOR_NUM 3
 #define ANCHOR_DIS_START 6
-vec2d anchorArray[ANCHOR_NUM] = {{0, 0}, {100, 0}, {57, 53}};
+vec2d anchorArray[ANCHOR_NUM] = {{0, 0}, {120, 0}, {57, 30}};
 
 int main()
 {
     int dev;
-    ssize_t nread;
     unsigned char buffer[MAX_BUFF_SIZE];
 
     dev = OpenDev(); //打开串口
@@ -24,7 +25,7 @@ int main()
     else
     {
         perror("Can't Open Serial Port");
-        return 0;
+        //return 0;
     }
 
     if (set_Parity(dev, 8, 1, 'N') == -1)
@@ -34,9 +35,10 @@ int main()
     }
 
     tcflush(dev, TCIFLUSH);
+    vector<vec2d> result;
 
-    vec2d result;
-    while (1)
+    ssize_t nread;
+    while (true)
     {
         nread = read(dev, buffer, MAX_BUFF_SIZE);
         if (nread != 0 && 'm' == buffer[0])
@@ -56,7 +58,7 @@ int main()
                 }
 
                 result = trilateration(anchorArray, radius, ANCHOR_NUM);
-                cout << result.x << "," << result.y << endl;
+                cout << setiosflags(ios::fixed) << setprecision(2) << result[0].x << "," << result[0].y << ","<< result[1].x << "," << result[1].y << endl;
                 break;
             case 'c': //校正后测距数据
                 break;
@@ -67,5 +69,6 @@ int main()
             }
         }
     }
+
     return 0;
 }

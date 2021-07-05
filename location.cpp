@@ -1,71 +1,88 @@
 #include "location.h"
+#include "load_config.h"
 
-vector<vec2d> last_result;
+int ANCHOR_NUM;
+int ANCHOR_DIS_START;
+int MAX_BUFF_SIZE;
+
+vec2d last_result;
+
+void loadUWBParams()
+{
+    ANCHOR_NUM = getParam("ANCHOR_NUM");
+    ANCHOR_DIS_START = getParam("ANCHOR_DIS_START");
+    MAX_BUFF_SIZE = getParam("MAX_BUFF_SIZE");
+}
 
 //多球交汇原理
-vector<vec2d> trilateration(const vec2d *anchorArray, const int *radius, const int count)
+vec2d trilateration(const int *ids, const int *radius)
 {
-    vector<vec2d> result;
+    vec2d result;
+    int count = 0;
     //初始化圆
-    circle circle1, circle2, circle3;
-    circle1.x = anchorArray[0].x;
-    circle1.y = anchorArray[0].y;
-    circle1.r = radius[0];
+    vector<Lcircle> circles;
+    map<int, double *>::iterator iter;
+    for(int i = 0; i < ANCHOR_NUM; i++){
+        iter = globalAnchors.find(ids[i]);
+        if (iter != globalAnchors.end() && 0 != radius[i]){
+            Lcircle circle;
+            circle.x = iter->second[0];
+            circle.y = iter->second[1];
+            circle.r = radius[i];
+            circles.push_back(circle);
+            count++;
+        }    
+    }
 
-    circle2.x = anchorArray[1].x;
-    circle2.y = anchorArray[1].y;
-    circle2.r = radius[1];
-
-    circle3.x = anchorArray[2].x;
-    circle3.y = anchorArray[2].y;
-    circle3.r = radius[2];
-
-    if (count == 3) //一次三角质心
+    vector<vec2d> alter_points;
+    int valid_insect = 0;
+    if (count >=3 ) //一次三角质心
     {
-        vector<vec2d> insect1 = insect(circle1, circle2);
-        vector<vec2d> insect2 = insect(circle1, circle3);
-        vector<vec2d> insect3 = insect(circle2, circle3);
-
-        vector<vec2d> alter_points;
-        int valid_insect = 0;
-        if (!insect1.empty())
-        {
-            alter_points.push_back(selectPoint(insect1, circle3));
-            valid_insect++;
-        }
-        if (!insect2.empty())
-        {
-            alter_points.push_back(selectPoint(insect2, circle2));
-        }
-        if (!insect3.empty())
-        {
-            alter_points.push_back(selectPoint(insect3, circle1));
+        for(int i= 0;i < count;i++){
+            for(int j= i+1; j< count; j++){
+                vector<vec2d> points = insect(circles[i], circles[j]);
+                if (!points.empty() && points.size() == 1){                   
+                    alter_points.push_back(points[0]);
+                    valid_insect++;
+                }else if(!points.empty()){
+                    for(int k = 0;k < count;k++){
+                        if( k == i || k == j){
+                            continue;
+                        }
+                        alter_points.push_back(selectPoint(points, circles[k]));
+                        valid_insect++;
+                    }
+                }
+            }
         }
 
-        if (alter_points.empty())
+        if (alter_points.empty() || valid_insect == 0)
         {
             return last_result;
         }
-        result = optimizeByRatio(alter_points);
+        else if (valid_insect == 1)
+        {
+            result = alter_points[0];
+        }
+        else if (valid_insect == 2)
+        {
+            result.x = (alter_points[0].x + alter_points[1].x) / 2;
+            result.y = (alter_points[0].y + alter_points[1].y) / 2;
+        }
+        else
+        {
+            result = optimizeByRatio(alter_points);
+        }
         last_result = result;
         return result;
-    }
-    // else if (count == 4) //两次三角质心
-    // {
-    //     circle4.x = anchorArray[3].x;
-    //     circle4.y = anchorArray[3].y;
-    //     circle4.r = radius[3];
-    //     vec2d insect4[2];
-    // }
-    else
-    {
+    }else{
         cout << "基站个数异常" << endl;
         return last_result;
     }
 }
 
 //确定备选三角顶点
-vec2d selectPoint(const vector<vec2d> points, const circle circle)
+vec2d selectPoint(const vector<vec2d> points, const Lcircle circle)
 {
     vec2d alter_point;
     if (!isOutsideCircle(points[0], circle))
@@ -86,14 +103,14 @@ vec2d selectPoint(const vector<vec2d> points, const circle circle)
 }
 
 //判断一点是否在圆外
-bool isOutsideCircle(const vec2d point, const circle circle)
+bool isOutsideCircle(const vec2d point, const Lcircle circle)
 {
     double dis_sqr = pow(point.x - circle.x, 2) + pow(point.y - circle.y, 2);
     return (dis_sqr > circle.y * circle.y) ? true : false;
 }
 
 //两圆求交点
-vector<vec2d> insect(const circle circle1, const circle circle2)
+vector<vec2d> insect(const Lcircle circle1, const Lcircle circle2)
 {
     vector<vec2d> results;
     double dis, a, b, c, p, q, r;
@@ -135,9 +152,7 @@ vector<vec2d> insect(const circle circle1, const circle circle2)
         {
             result1.y = circle1.y - circle1.r * sin_value[0];
         }
-        result2 = result1;
         results.push_back(result1);
-        results.push_back(result2);
         return results;
     }
 
@@ -178,14 +193,13 @@ vector<vec2d> insect(const circle circle1, const circle circle2)
 }
 
 //三角质心优化---改为误差加权平均优化
-vector<vec2d> optimizeByRatio(const vector<vec2d> points)
+vec2d optimizeByRatio(const vector<vec2d> points)
 {
-    vector<vec2d> data;
     vec2d result;
-    vec2d old_result;
+    int length = points.size();
     double avg_x, avg_y, sum_e_x, sum_e_y, sum_r_x, sum_r_y;
     avg_x = avg_y = sum_e_x = sum_e_y = sum_r_x = sum_r_y = 0;
-    for (int i = 0; i < points.size(); i++)
+    for (int i = 0; i < length; i++)
     {
         avg_x += points[i].x;
         avg_y += points[i].y;
@@ -193,16 +207,12 @@ vector<vec2d> optimizeByRatio(const vector<vec2d> points)
     avg_x /= points.size();
     avg_y /= points.size();
 
-    old_result.x = avg_x;
-    old_result.y = avg_y;
-    data.push_back(old_result);
-
     //计算与平均值的差值
-    double error_x[points.size()] = {0};
-    double error_y[points.size()] = {0};
-    double ratio_x[points.size()] = {0};
-    double ratio_y[points.size()] = {0};
-    for (int i = 0; i < points.size(); i++)
+    double error_x[length] = {0};
+    double error_y[length] = {0};
+    double ratio_x[length] = {0};
+    double ratio_y[length] = {0};
+    for (int i = 0; i < length; i++)
     {
         error_x[i] = fabs(points[i].x - avg_x);
         error_y[i] = fabs(points[i].y - avg_y);
@@ -210,20 +220,25 @@ vector<vec2d> optimizeByRatio(const vector<vec2d> points)
         sum_e_y += error_y[i];
     }
 
-    for (int i = 0; i < points.size(); i++)
+    for (int i = 0; i < length ; i++)
     {
+        if( ZERO == error_x[i]){
+            error_x[i] = 0.001;
+        }
+        if( ZERO == error_x[i]){
+            error_x[i] = 0.001;
+        }
         ratio_x[i] = sum_e_x / error_x[i];
         ratio_y[i] = sum_e_y / error_y[i];
         sum_r_x += ratio_x[i];
         sum_r_y += ratio_y[i];
     }
 
-    for (int i = 0; i < points.size(); i++)
+    for (int i = 0; i < length; i++)
     {
         result.x += points[i].x * ratio_x[i] / sum_r_x;
         result.y += points[i].y * ratio_y[i] / sum_r_y;
     }
 
-    data.push_back(result);
-    return data;
+    return result;
 }

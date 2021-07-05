@@ -50,22 +50,19 @@ int main()
         {
             int offset = 0;
             int *radius = new int[ANCHOR_NUM];
-            int *ids = new int[ANCHOR_NUM];
             switch (buffer[1])
             {
             case 'r': //原始测距数据
-                print_hex(buffer, 26);
+                print_hex(buffer, 20);
                 for (int i = 0; i < ANCHOR_NUM; i++)
-                {
-                    unsigned int id = buffer[ANCHOR_DIS_START + offset];
-                    ids[i] = id;
-                    unsigned int dis = buffer[ANCHOR_DIS_START + offset + 2] << 8;
-                    dis = dis ^ buffer[ANCHOR_DIS_START + offset + 1];
+                {                   
+                    unsigned int dis = buffer[ANCHOR_DIS_START + offset + 1] << 8;
+                    dis = dis ^ buffer[ANCHOR_DIS_START + offset];
                     radius[i] = dis;
-                    offset = offset + 3;
+                    offset = offset + 2;
                 }
-                cout<< ids[0] <<":"<< radius[0] <<"," << ids[1] <<":"<< radius[1] <<","<< ids[2] <<":"<< radius[2] <<","<< ids[3] <<":"<< radius[3] <<endl;
-                uwb_result = trilateration(ids, radius);
+                //选取最近的四个
+                uwb_result = trilateration(radius);
                 //cout<< uwb_result.x <<"," << uwb_result.y<<endl;
                 break;
             case 'c': //校正后测距数据

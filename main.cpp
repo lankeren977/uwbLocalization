@@ -53,7 +53,7 @@ int main()
             switch (buffer[1])
             {
             case 'r': //原始测距数据
-                print_hex(buffer, 20);
+                //print_hex(buffer, 20);
                 for (int i = 0; i < ANCHOR_NUM; i++)
                 {                   
                     unsigned int dis = buffer[ANCHOR_DIS_START + offset + 1] << 8;
@@ -63,7 +63,7 @@ int main()
                 }
                 //选取最近的四个
                 uwb_result = trilateration(radius);
-                //cout<< uwb_result.x <<"," << uwb_result.y<<endl;
+                cout<< uwb_result.x <<"," << uwb_result.y<<endl;
                 break;
             case 'c': //校正后测距数据
                 break;
@@ -73,7 +73,6 @@ int main()
                 break;
             }
             delete radius;
-            delete ids;
         }
     }
     delete buffer;

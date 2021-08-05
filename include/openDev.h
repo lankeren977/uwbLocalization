@@ -8,6 +8,7 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <string.h>
+#include <iostream>
 
 #define TRUE 1
 #define FALSE 0
